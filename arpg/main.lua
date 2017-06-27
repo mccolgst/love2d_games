@@ -19,8 +19,7 @@ camera.x = love.graphics.getWidth()/2
 camera.y = love.graphics.getHeight()/2
 
 cave = {}
-
-speed=5
+speed = 5
 
 function camera:set()
   love.graphics.push()
@@ -74,21 +73,7 @@ function love.draw()
   camera:set()
   camera:setpos(player.x-(love.graphics.getWidth()/2),
                 player.y-(love.graphics.getHeight()/2))
-  love.graphics.setColor(255,255,255)
-  love.graphics.print("x:"..player.x.." y:"..player.y,player.x-40,player.y+20)
-  love.graphics.setColor(108,18,18)
 
-  for x=0,love.graphics.getWidth(),30 do
-    love.graphics.line(x,0,x,love.graphics.getHeight())
-  end
-  
-  for y=0,love.graphics.getHeight(),30 do
-    love.graphics.line(0,y,love.graphics.getWidth(),y)
-  end
-  if mouse.x and mouse.y then
-    love.graphics.circle("fill", mouse.x, mouse.y, 10)
-
-  end
   cave:draw()
   player:draw()
   camera:unset()
@@ -119,9 +104,16 @@ function player:update()
     player.dy = 0
     player.y = mouse.y
   end
+  if not cave:is_wall_at_xy(player.x + player.dx,
+                            player.y + player.dy) then
+    player.x = player.x + player.dx
+    player.y = player.y + player.dy
+  else
+    if not player.attacking then
+      player:attack()
+    end
+  end
 
-  player.x = player.x + player.dx
-  player.y = player.y + player.dy
 
   if table.getn(player.bursts) == 0 then
     player.attacking = false
@@ -147,8 +139,17 @@ function player:draw()
     if burst.t<15 then
       love.graphics.circle('line', burst.x, burst.y, burst.t*2)
     end
-    love.graphics.setColor(0,0,0)
   end
+  love.graphics.setColor(255,255,255)
+  love.graphics.print("x:"..player.x.." y:"..player.y,player.x-40,player.y+20)
+  love.graphics.setColor(108,18,18)
+
+  if mouse.x and mouse.y then
+    love.graphics.circle("fill", mouse.x, mouse.y, 10)
+  end
+
+  love.graphics.setColor(0,0,0)
+
 end
 
 function player:attack()
@@ -162,6 +163,7 @@ function player:attack()
 end
 
 function cave:make()
+  self.cell_size = 32
   self.randomized_map = self:random_table(100, 100)
   self.map = self.randomized_map
 end
@@ -217,10 +219,24 @@ function cave:draw()
   for idx_row, row in ipairs(self.map) do
     for idx_col, col in ipairs(row) do
         if self.map[idx_row][idx_col] then
-          love.graphics.setColor(0,0,255)
-          love.graphics.rectangle('fill',idx_row*12, idx_col*12,12,12)
+          love.graphics.setColor(131,118,156)
+          love.graphics.rectangle('fill',idx_row*self.cell_size, idx_col*self.cell_size,
+                                  self.cell_size,self.cell_size)
           love.graphics.setColor(0,0,0)
         end
     end
   end
+end
+
+function cave:is_wall_at_xy(x,y)
+  row = math.ceil(x/self.cell_size) - 1
+  col = math.ceil(y/self.cell_size) - 1
+  return self.map[row][col]
+end
+
+function check_collision(x1,y1,w1,h1, x2,y2,w2,h2)
+  return x1 < x2+w2 and
+         x2 < x1+w1 and
+         y1 < y2+h2 and
+         y2 < y1+h1
 end
