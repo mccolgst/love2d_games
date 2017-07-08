@@ -19,7 +19,7 @@ camera.x = love.graphics.getWidth()/2
 camera.y = love.graphics.getHeight()/2
 
 cave = {}
-speed = 5
+speed = 3
 
 function camera:set()
   love.graphics.push()
@@ -73,9 +73,8 @@ function love.draw()
   camera:set()
   camera:setpos(player.x-(love.graphics.getWidth()/2),
                 player.y-(love.graphics.getHeight()/2))
-
-  cave:draw()
   player:draw()
+  cave:draw()
   camera:unset()
 
 end
@@ -104,14 +103,10 @@ function player:update()
     player.dy = 0
     player.y = mouse.y
   end
-  if not cave:is_wall_at_xy(player.x + player.dx,
-                            player.y + player.dy) then
+  if not cave:is_wall_at_xy(player.x + (player.dx*4.5),
+                            player.y + (player.dy*4.5)) then
     player.x = player.x + player.dx
     player.y = player.y + player.dy
-  else
-    if not player.attacking then
-      player:attack()
-    end
   end
 
 
@@ -160,16 +155,28 @@ function player:attack()
   burst.ttl = 20
   burst.t = 0
   table.insert(self.bursts, burst)
+  -- find all is cave wall in 15 px radius and set them to 0
+  -- at 16 cell size it's about 6 idx in each way
+  local epicenter_x = math.ceil(player.x/cave.cell_size) - 1
+  local epicenter_y = math.ceil(player.y/cave.cell_size) - 1
+  for c=epicenter_x-3,epicenter_x+3 do
+    for r=epicenter_y-3,epicenter_y+3 do
+        cave:set_to_ground(c, r)
+    end
+  end
+
 end
 
 function cave:make()
-  self.cell_size = 32
+  self.cell_size = 16
   self.randomized_map = self:random_table(100, 100)
   self.map = self.randomized_map
 end
 
 function cave:random_table(width, height)
   local map = {}
+  map.width = width
+  map.height = height
   -- width and height are number of cels
   for w=1,width do
     map[w] = {}
@@ -183,6 +190,8 @@ end
 
 function cave:step()
   local new_map = {}
+  new_map.width=self.map.width
+  new_map.height=self.map.height
   for idx_row, row in ipairs(self.map) do
     new_map[idx_row] = {}
     for idx_col, col in ipairs(row) do
@@ -201,7 +210,7 @@ end
 
 function cave:check_neighbors(x, y, map)
   local walls = 0
-  if x > 1 and x < 99 and y > 1 and y < 99 then
+  if x > 1 and x < map.width-1 and y > 1 and y < map.height-1 then
     if map[x-1][y-1] then walls = walls + 1 end
     if map[x][y-1] then walls = walls + 1 end
     if map[x+1][y-1] then walls = walls + 1 end
@@ -231,7 +240,21 @@ end
 function cave:is_wall_at_xy(x,y)
   row = math.ceil(x/self.cell_size) - 1
   col = math.ceil(y/self.cell_size) - 1
+  if (row < 0 or row > self.map.width) or
+     (col < 0 or col > self.map.height) then
+    return false
+  end
   return self.map[row][col]
+end
+
+function cave:set_to_ground(x,y)
+  if (row < 0 or row > self.map.width) or
+     (col < 0 or col > self.map.height) then
+    return false
+  else
+    self.map[x][y] = false
+    return true
+  end
 end
 
 function check_collision(x1,y1,w1,h1, x2,y2,w2,h2)
